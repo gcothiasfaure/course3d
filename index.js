@@ -2,19 +2,47 @@
 // # Loading gpx file
 
 // Define initial camera position
+// var placement = {
+//     coord: new itowns.Coordinates('EPSG:4326', 5.770120,45.208860),
+//     range: 80000,
+//     tilt: 45,
+// }
+
 var placement = {
-    coord: new itowns.Coordinates('EPSG:4326', 5.770120,45.208860),
-    range: 80000,
-    tilt: 45,
+    coord: new itowns.Coordinates('EPSG:4326', 2.351323, 48.856712),
+    range: 25000000,
 }
+var promises = [];
 
 // `viewerDiv` will contain iTowns' rendering area (`<canvas>`)
 var viewerDiv = document.getElementById('viewerDiv');
 
 // Instanciate iTowns GlobeView*
 var view = new itowns.GlobeView(viewerDiv, placement);
+var time = 50000;
+var pathTravel = [];
+const atmosphere = view.getLayerById('atmosphere');
+atmosphere.setRealisticOn(false);
 
-setupLoadingScreen(viewerDiv, view);
+
+pathTravel.push({ coord: new itowns.Coordinates('EPSG:4326', 5.770120,45.208860), range: 100000, time: time * 0.2 });
+pathTravel.push({ range: 13932, time: time * 0.2, tilt: 7.59, heading: -110.9 });
+pathTravel.push({ tilt: 8, time: time * 0.2 });
+pathTravel.push({ range: 70000, time: time * 0.2, tilt: 5, heading: -90 });
+
+function addLayerCb(layer) {
+    return view.addLayer(layer);
+}
+
+function travel() {
+    var camera = view.camera.camera3D;
+    return itowns.CameraUtils
+        .sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
+}
+
+
+// setupLoadingScreen(viewerDiv, view);
+
 
 // Add one imagery layer to the scene
 // This layer is defined in a json file but it could be defined as a plain js
@@ -50,7 +78,7 @@ var waypointGeometry = new itowns.THREE.BoxGeometry(1, 1, 80);
 var waypointMaterial = new itowns.THREE.MeshBasicMaterial({ color: 0xffffff });
 // Listen for globe full initialisation event
 var waypoints = [];
-view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
+view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function init() {
     console.info('Globe initialized');
     // itowns.Fetcher.xml('https://raw.githubusercontent.com/iTowns/iTowns2-sample-data/master/ULTRA2009.gpx')
     itowns.Fetcher.xml('gpx/tdfgm2020.gpx')
@@ -94,5 +122,9 @@ view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
                 view.scene.add(mesh);
                 view.notifyChange();
             }
-        });
+        },
+        Promise.all(promises).then(function _() {
+            // let's go
+            travel().then(travel);
+        }).catch(console.error));
 });
