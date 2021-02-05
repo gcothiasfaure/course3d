@@ -3,7 +3,7 @@
 
 // Define initial camera position
 var placement = {
-    coord: new itowns.Coordinates('EPSG:4326', 0.089, 42.8989),
+    coord: new itowns.Coordinates('EPSG:4326', 5.770120,45.208860),
     range: 80000,
     tilt: 45,
 }
@@ -52,7 +52,8 @@ var waypointMaterial = new itowns.THREE.MeshBasicMaterial({ color: 0xffffff });
 var waypoints = [];
 view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
     console.info('Globe initialized');
-    itowns.Fetcher.xml('https://raw.githubusercontent.com/iTowns/iTowns2-sample-data/master/ULTRA2009.gpx')
+    // itowns.Fetcher.xml('https://raw.githubusercontent.com/iTowns/iTowns2-sample-data/master/ULTRA2009.gpx')
+    itowns.Fetcher.xml('gpx/tdfgm2020.gpx')
         .then(gpx => itowns.GpxParser.parse(gpx, {
             in: {
                 crs: 'EPSG:4326',
@@ -64,29 +65,29 @@ view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, function () {
             }
         }))
         .then(collection => itowns.Feature2Mesh.convert({
-            color: new itowns.THREE.Color(0xff0000),
+            color: new itowns.THREE.Color(0xffff00),
         })(collection))
         .then(function (mesh) {
             if (mesh) {
                 mesh.traverse((m) => {
                     if (m.type == 'Line') {
-                        m.material.linewidth = 5;
+                        m.material.linewidth = 20000;
                     }
 
-                    if (m.type == 'Points') {
-                        var vertices = m.feature.vertices;
-                        for (var i = 0; i < vertices.length; i++) {
-                            var waypoint = new itowns.THREE.Mesh(waypointGeometry, waypointMaterial);
-                            waypoint.position.set(
-                                vertices[i * 3],
-                                vertices[i * 3 + 1],
-                                vertices[i * 3 + 2]);
-                            waypoint.lookAt(0, 0, 0);
-                            waypoint.onBeforeRender = updatePointScale;
-                            waypoint.updateMatrixWorld();
-                            waypoints.push(waypoint);
-                        }
-                    }
+                    // if (m.type == 'Points') {
+                    //     var vertices = m.feature.vertices;
+                    //     for (var i = 0; i < vertices.length; i++) {
+                    //         var waypoint = new itowns.THREE.Mesh(waypointGeometry, waypointMaterial);
+                    //         waypoint.position.set(
+                    //             vertices[i * 3],
+                    //             vertices[i * 3 + 1],
+                    //             vertices[i * 3 + 2]);
+                    //         waypoint.lookAt(0, 0, 0);
+                    //         waypoint.onBeforeRender = updatePointScale;
+                    //         waypoint.updateMatrixWorld();
+                    //         waypoints.push(waypoint);
+                    //     }
+                    // }
                 });
                 mesh.add(...waypoints);
                 mesh.updateMatrixWorld();
