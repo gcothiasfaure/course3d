@@ -1,21 +1,31 @@
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course3d</title>
-    <link rel="shortcut icon" href="./assets/icon.png" type="image/png">
-    <link rel="stylesheet" type="text/css" href="./lib/css/example.css">
-    <link rel="stylesheet" type="text/css" href="./lib/css/LoadingScreen.css">
-    <link rel="stylesheet" type="text/css" href="./index.css">
-</head>
-<body>
-    <div id="viewerDiv"></div>
-    <script src="./lib/js/itowns.js"></script>
-    <script src="./lib/js/LoadingScreen.js"></script>
-    <script src="./lib/js/GuiTools.js"></script>
-    <script src="index.js"></script>
-    
-</body>
+<html>
+    <head>
+        <title>Globe</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="./css/index.css">
+    </head>
+    <body>
+
+        <div id="menu">
+            <div>
+                <p>Bienvenue sur Course3d</p>
+            </div>
+            <div>
+                <input id="fileInput" type="file"/>
+            </div>
+            <div>
+                <label for="radioBtn">Démarrer avec le GPX par défaut</label>
+                <input type="checkbox" id="radioBtn"/>
+            </div>
+            <div>
+                <button id="beginBtn">Démarrer</button>
+            </div>
+        </div>
+
+        <div id="viewerDiv"></div>
+
+        <script src="dist/bundle.js"></script>
+    </body>
 </html>
