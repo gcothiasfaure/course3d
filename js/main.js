@@ -1,143 +1,149 @@
 'use strict'
 
+
 import * as itowns from 'itowns';
-import * as THREE from 'three';
-import * as DEMUtils from 'itowns/lib/Utils/DEMUtils.js'
+import bsCustomFileInput from 'bs-custom-file-input';
 
 
+// For dynamic file input in menu
+bsCustomFileInput.init();
+
+
+// Global variables
 const beginBtn = document.getElementById('beginBtn');
 const fileInput = document.getElementById('fileInput');
-const menu = document.getElementById('menu');
-var viewerDiv = document.getElementById('viewerDiv');
-
-var view;
-
-
-beginBtn.addEventListener('click', () => {
-    console.log("go");
-    beginActivity(fileInput);
-})
+const menuContainer = document.getElementById('menuContainer');
+const viewerDiv = document.getElementById('viewerDiv');
+const GPXParserOptions = {    in: {   crs: 'EPSG:4326'    },out: {    crs: 'EPSG:4326',   mergeFeatures: true }    };
+const INITIAL_CAMERA_RANGE=500;
+const INITIAL_CAMERA_TILT=90;
+let view;
+let loadingScreenContainer;
 
 
+// Display menu :
+beginBtn.addEventListener('click', onBegin);
+// Skip menu :
+//beginActivity(undefined);
+
+
+// On user start, decide if launch activity with chosen GPX file or default one
+function onBegin() {
+    // Take in count the GPX file if user inputed one
+    if(fileInput.value!="") beginActivity(fileInput.files[0]);
+    // If not, default GPX
+    else    beginActivity(undefined);
+}
+
+
+// Pass from menu to loader screen
 function beginActivity(gpxFile) {
 
-    menu.remove();
-    viewerDiv.classList.add("viewerDiv");
-    
-    console.log(gpxFile);
-    
-    var placement = {
-        coord: new itowns.Coordinates('EPSG:4326', 0.089, 42.8989),
-        range: 500,
-        tilt: 45,
-    }
+    // Remove menu and add viewerDiv class to viewerDiv
+    menuContainer.remove();
 
-    
+    viewerDiv.classList.add("viewerDiv");
+
+    setupLoadingScreen();
+
+    parseGPXFile(gpxFile);
+}
+
+
+// Initialize 3D map by defining initial placement and loading the globe
+function init3DMap(initialLng,initialLat) {
+
+    const placement = {
+        coord: new itowns.Coordinates('EPSG:4326',initialLng,initialLat),
+        range: INITIAL_CAMERA_RANGE,
+        tilt: INITIAL_CAMERA_TILT,
+    }
 
     view = new itowns.GlobeView(viewerDiv, placement);
 
-    setupLoadingScreen(viewerDiv, view);
+    // Detect when hide loader screen
+    view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED, hideLoader);
+    setTimeout(hideLoader, 5000);
 
-    itowns.Fetcher.json('./node_modules/itowns/examples/layers/JSONLayers/Ortho.json').then(function _(config) {
+    itowns.Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
         config.source = new itowns.WMTSSource(config.source);
-        var layer = new itowns.ColorLayer('Ortho', config);
+        let layer = new itowns.ColorLayer('Ortho', config);
         view.addLayer(layer);
     });
     function addElevationLayerFromConfig(config) {
         config.source = new itowns.WMTSSource(config.source);
-        var layer = new itowns.ElevationLayer(config.id, config);
+        let layer = new itowns.ElevationLayer(config.id, config);
         view.addLayer(layer);
     }
-    itowns.Fetcher.json('./node_modules/itowns/examples/layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
-    itowns.Fetcher.json('./node_modules/itowns/examples/layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
-
-    view.addEventListener(itowns.GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED,onViewLoad);
+    itowns.Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
+    itowns.Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
 }
 
 
+// Parse chosen GPX file or fetch the default one
+function parseGPXFile(gpxFile) {
+    if (gpxFile) {
 
+        let reader = new FileReader();
+        reader.readAsText(gpxFile);
 
+        reader.onloadend = function(){
 
-function onViewLoad() {
-    
-    console.info('Globe initialized');
-    const coord = new itowns.Coordinates('EPSG:4326', 0.089, 42.8989);
-    console.log(view.tileLayer);
-    console.log(coord);
-    const alt = DEMUtils.default.getElevationValueAt(view.tileLayer,coord,1);
+            let parser = new DOMParser();
+            let GPXXMLFile = parser.parseFromString(reader.result,"text/xml");
 
-    const sherePoint = new itowns.Coordinates('EPSG:4326',0.089, 42.8989,alt+5).as(view.referenceCrs);
+            itowns.GpxParser.parse(GPXXMLFile,GPXParserOptions)
+            .then(collection =>{
 
-    addSphere(sherePoint);
+                console.log(collection);
+                const vertices = collection.features[0].vertices;
+                init3DMap(vertices[0],vertices[1]);
 
-    itowns.Fetcher.xml('./gpx/tdfgm2020.gpx')
-        .then(gpx => itowns.GpxParser.parse(gpx, {
-            in: {
-                crs: 'EPSG:4326',
-            },
-            out: {
-                crs: 'EPSG:4326',
-                mergeFeatures: true,
-            }
-        }))
+            })
+        }
+    }
+    else{
+
+        itowns.Fetcher.xml('./gpx/tdfgm2020.gpx')
+        .then(gpx => itowns.GpxParser.parse(gpx,GPXParserOptions))
         .then(collection =>{
-            console.log(collection)
+
+            console.log(collection);
+            const vertices = collection.features[0].vertices;
+            init3DMap(vertices[0],vertices[1]);
+
         })
+    }
 }
 
 
-function addSphere(coord) {
+// Display the loader screen
+function setupLoadingScreen() {
 
-    var geometry = new THREE.SphereGeometry( 5, 32, 32 );
-    var material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    var mesh = new THREE.Mesh(geometry, material);
-
-    // position and orientation of the mesh
-    mesh.position.copy(coord.toVector3());
-
-    // update coordinate of the mesh
-    mesh.updateMatrixWorld();
-
-    // add the mesh to the scene
-    view.scene.add(mesh);
-
-    // make the object usable from outside of the function
-    view.mesh = mesh;
-    view.notifyChange();
-}
-
-
-function setupLoadingScreen(viewerDiv, view) {
-    var loadingScreenContainer;
-
-    // loading screen
     loadingScreenContainer = document.createElement('div');
-    // eslint-disable-next-line no-multi-str
-    loadingScreenContainer.innerHTML = '\
-        <div>\
-        <p>Je charge gros</p>\
-        </div>';
+    let img = new Image(200,200);
+    img.classList.add("loading-image");
+    img.onload = function() {
+        loadingScreenContainer.appendChild(img);
+    }
+    img.src = './assets/logo.png';
     loadingScreenContainer.id = 'itowns-loader';
     viewerDiv.appendChild(loadingScreenContainer);
+}
 
-    // auto-hide in 3 sec or if view is loaded
-    function hideLoader() {
-        if (!loadingScreenContainer) {
-            return;
-        }
-        loadingScreenContainer.style.opacity = 0;
-        loadingScreenContainer.style.pointerEvents = 'none';
-        loadingScreenContainer.style.transition = 'opacity 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53)';
 
-        loadingScreenContainer.addEventListener('transitionend', function _(e) {
-            viewerDiv.removeChild(e.target);
-        });
-        loadingScreenContainer = null;
-        view.removeEventListener(
-            itowns.VIEW_EVENTS.LAYERS_INITIALIZED,
-            hideLoader);
-    }
+// Hide the loader screen
+function hideLoader() {
+    if (!loadingScreenContainer)    return;
 
-    view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED, hideLoader);
-    setTimeout(hideLoader, 3000);
+    loadingScreenContainer.style.opacity = 0;
+    loadingScreenContainer.style.pointerEvents = 'none';
+    loadingScreenContainer.style.transition = 'opacity 0.5s cubic-bezier(0.55, 0.085, 0.68, 0.53)';
+
+    loadingScreenContainer.addEventListener('transitionend', function _(e) {
+        viewerDiv.removeChild(e.target);
+    })
+
+    loadingScreenContainer = null;
+    view.removeEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,hideLoader);
 }
