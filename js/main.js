@@ -3,6 +3,8 @@
 
 import * as itowns from 'itowns';
 import bsCustomFileInput from 'bs-custom-file-input';
+import * as THREE from 'three';
+import * as DEMUtils from 'itowns/lib/Utils/DEMUtils.js';
 
 
 // For dynamic file input in menu
@@ -95,9 +97,10 @@ function parseGPXFile(gpxFile) {
             itowns.GpxParser.parse(GPXXMLFile,GPXParserOptions)
             .then(collection =>{
 
-                console.log(collection);
                 const vertices = collection.features[0].vertices;
                 init3DMap(vertices[0],vertices[1]);
+
+                view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)   });
 
             })
         }
@@ -108,12 +111,70 @@ function parseGPXFile(gpxFile) {
         .then(gpx => itowns.GpxParser.parse(gpx,GPXParserOptions))
         .then(collection =>{
 
-            console.log(collection);
             const vertices = collection.features[0].vertices;
             init3DMap(vertices[0],vertices[1]);
 
+            view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)    });
+
         })
     }
+}
+
+
+// Trace GPX on map
+function traceGPX(vertices) {
+    addCurve(vertices);
+}
+
+
+// Compute elevation according to the layer if available
+function computeElevation(lng,lat,alt) {
+    let realAlt;
+
+    const coord = new itowns.Coordinates('EPSG:4326',lng,lat);
+
+    let computedAlt = DEMUtils.default.getElevationValueAt(view.tileLayer,coord,1);
+
+    if (computedAlt)    realAlt = computedAlt;
+    else                realAlt = alt;
+
+    const computedPoint = new itowns.Coordinates('EPSG:4326',lng,lat,realAlt+3).as(view.referenceCrs);
+    
+    return computedPoint.toVector3();
+}
+
+
+// Add the curve to the 3D map
+function addCurve(vertices) {
+
+    let coordList=[];
+
+    for (var i = 0; i < 1000; i++){
+
+        let currentPoint = {
+            lng:vertices[i*3],
+            lat:vertices[i*3 + 1],
+            alt:vertices[i*3 + 2]
+        }
+
+        coordList.push(computeElevation(currentPoint.lng,currentPoint.lat,currentPoint.alt));
+    }
+
+    const pipeSpline = new THREE.CatmullRomCurve3( coordList );
+
+    const geometry = new THREE.TubeGeometry( pipeSpline, 2000, 2, 20, false );
+    const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+    const mesh = new THREE.Mesh( geometry, material );
+    
+    // update coordinate of the mesh
+    mesh.updateMatrixWorld();
+
+    // add the mesh to the scene
+    view.scene.add(mesh);
+
+    // make the object usable from outside of the function
+    view.mesh = mesh;
+    view.notifyChange();
 }
 
 
