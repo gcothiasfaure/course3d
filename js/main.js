@@ -4,7 +4,6 @@
 import * as itowns from 'itowns';
 import bsCustomFileInput from 'bs-custom-file-input';
 import * as THREE from 'three';
-import * as DEMUtils from 'itowns/lib/Utils/DEMUtils.js';
 
 
 // For dynamic file input in menu
@@ -124,23 +123,12 @@ function parseGPXFile(gpxFile) {
 // Trace GPX on map
 function traceGPX(vertices) {
     addCurve(vertices);
-}
 
-
-// Compute elevation according to the layer if available
-function computeElevation(lng,lat,alt) {
-    let realAlt;
-
-    const coord = new itowns.Coordinates('EPSG:4326',lng,lat);
-
-    let computedAlt = DEMUtils.default.getElevationValueAt(view.tileLayer,coord,1);
-
-    if (computedAlt)    realAlt = computedAlt;
-    else                realAlt = alt;
-
-    const computedPoint = new itowns.Coordinates('EPSG:4326',lng,lat,realAlt+3).as(view.referenceCrs);
+    // Add green sphere at start
+    addSphere(new itowns.Coordinates('EPSG:4326',vertices[0],vertices[1],vertices[2]+10).as(view.referenceCrs).toVector3(),0x21b710);
     
-    return computedPoint.toVector3();
+    // Add white sphere at end
+    addSphere(new itowns.Coordinates('EPSG:4326',vertices[vertices.length-3],vertices[vertices.length-2],vertices[vertices.length-1]+10).as(view.referenceCrs).toVector3(),0xffffff);
 }
 
 
@@ -149,20 +137,13 @@ function addCurve(vertices) {
 
     let coordList=[];
 
-    for (var i = 0; i < 1000; i++){
-
-        let currentPoint = {
-            lng:vertices[i*3],
-            lat:vertices[i*3 + 1],
-            alt:vertices[i*3 + 2]
-        }
-
-        coordList.push(computeElevation(currentPoint.lng,currentPoint.lat,currentPoint.alt));
+    for (let i = 0; i < vertices.length/3; i++) {
+        coordList.push(new itowns.Coordinates('EPSG:4326',vertices[i*3],vertices[i*3+1],vertices[i*3+2]+5).as(view.referenceCrs).toVector3());
     }
 
     const pipeSpline = new THREE.CatmullRomCurve3( coordList );
 
-    const geometry = new THREE.TubeGeometry( pipeSpline, 2000, 2, 20, false );
+    const geometry = new THREE.TubeGeometry( pipeSpline,coordList.length*10,10,8, false );
     const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
     const mesh = new THREE.Mesh( geometry, material );
     
@@ -172,8 +153,29 @@ function addCurve(vertices) {
     // add the mesh to the scene
     view.scene.add(mesh);
 
+    // Notify view to update
+    view.notifyChange();
+}
+
+
+// Add a shere to 3D map
+function addSphere(coord,color) {
+
+    var geometry = new THREE.SphereGeometry( 20, 32, 32 );
+    var material = new THREE.MeshBasicMaterial({ color: color });
+    var mesh = new THREE.Mesh(geometry, material);
+
+    // position and orientation of the mesh
+    mesh.position.copy(coord);
+
+    // update coordinate of the mesh
+    mesh.updateMatrixWorld();
+
+    // add the mesh to the scene
+    view.scene.add(mesh);
+
     // make the object usable from outside of the function
-    view.mesh = mesh;
+    view.mesh1 = mesh;
     view.notifyChange();
 }
 
@@ -206,5 +208,4 @@ function hideLoader() {
     })
 
     loadingScreenContainer = null;
-    view.removeEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,hideLoader);
 }

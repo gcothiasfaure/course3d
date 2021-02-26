@@ -56,3 +56,8 @@ body {
 #logoContainer{
   display: inline-flex;
 }
+
+input[type="file"] {
+  text-indent: -999px;
+  cursor: pointer !important;
+}
