@@ -19,9 +19,11 @@ const viewerDiv = document.getElementById('viewerDiv');
 const GPXParserOptions = {    in: {   crs: 'EPSG:4326'    },out: {    crs: 'EPSG:4326',   mergeFeatures: true }    };
 const INITIAL_CAMERA_RANGE=500;
 const INITIAL_CAMERA_TILT=90;
+let pathTravel;
+let time;
 let view;
 let loadingScreenContainer;
-
+let promises;
 
 // Display menu :
 beginBtn.addEventListener('click', onBegin);
@@ -62,7 +64,13 @@ function init3DMap(initialLng,initialLat) {
     }
 
     view = new itowns.GlobeView(viewerDiv, placement);
-
+    time = 1;
+    pathTravel = [];
+    promises = [];
+    // pathTravel.push({ coord: new itowns.Coordinates('EPSG:4326', 5.770120,45.208860), range: 100000, time: time * 0.2 });
+    // pathTravel.push({ range: 13932, time: time * 0.2, tilt: 7.59, heading: -110.9 });
+    // pathTravel.push({ tilt: 8, time: time * 0.2 });
+    // pathTravel.push({ range: 70000, time: time * 0.2, tilt: 5, heading: -90 });
     // Detect when hide loader screen
     view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED, hideLoader);
     setTimeout(hideLoader, 5000);
@@ -113,8 +121,37 @@ function parseGPXFile(gpxFile) {
 
             const vertices = collection.features[0].vertices;
             init3DMap(vertices[0],vertices[1]);
+            // pathTravel.push({ range: 1000, time: time, tilt: 5.59, heading: -40.9 });
+            
+            for(let i = 0; i < vertices.length - 30; i +=30){
+                let X = Math.cos(vertices[i + 30] * Math.PI / 180) *
+                 Math.sin((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
+                let Y = Math.cos(vertices[i] * Math.PI / 180)*
+                Math.sin(vertices[i + 30] * Math.PI / 180) -
+                Math.sin(vertices[i] * Math.PI / 180) *
+                Math.cos(vertices[i + 30] * Math.PI / 180) *
+                Math.cos((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
 
-            view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)    });
+                let beta = Math.atan2(X,Y) * 180 / Math.PI;
+                // let dab = Math.sqrt(
+                //     Math.pow((vertices[i + 30] - vertices[i]),2) 
+                //     + Math.pow((vertices[i + 31] - vertices[i + 1]),2)
+                //      );
+                // let a = 2 * Math.atan(
+                //     (vertices[i + 30] - vertices[i])
+                //     /( dab
+                //     +  (vertices[i + 31] - vertices[i + 1])
+                //      ));
+                console.log(beta);
+                pathTravel.push({ coord: new itowns.Coordinates('EPSG:4326', vertices[i],vertices[i+1]), range: vertices[i+2] + 1000, time:  1000* time,  tilt: 30, heading: beta - 90});
+            }
+            view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  
+                traceGPX(vertices);
+                Promise.all(promises).then(function _() {
+                    // let's go
+                    travel().then(travel);
+                }).catch(console.error)
+               });
 
         })
     }
@@ -207,4 +244,13 @@ function hideLoader() {
 
     loadingScreenContainer = null;
     view.removeEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,hideLoader);
+}
+
+
+
+function travel() {
+    var camera = view.camera.camera3D;
+
+    return itowns.CameraUtils
+        .sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
 }
