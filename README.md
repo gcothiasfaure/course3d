@@ -2,7 +2,7 @@
 
 **Course3d** est un outil de visualisation web d'un parcours dans un environnement 3D à caméra dynamique, basé sur [iTowns](https://github.com/iTowns/itowns).
 
-Il a été dévelppé dans le cadre du mini projet 3D de TSI C 2021.
+Il a été dévelppé dans le cadre du mini projet 3D de TSI-C 2021 à l'ENSG.
 
 ## Déploiement
 
@@ -23,6 +23,14 @@ Pour installer **Course3d** :
 - Pour lancer un build à chaque  nouvelle sauvegarde du code source : `npm run autobuild`
 
 Dans chaque cas, un *bundle* est généré ([./dist/bundle.js](./dist/bundle.js)), il est lié aux autres fichiers statiques de **Course3d**.
+
+## Utilisation
+
+Pour utiliser **Course3d**, importez la trace GPX de votre parcours à l'accueil. Puis visualisez votre parcours dans un environnement 3D à caméra dynamique. 
+
+Vous pouvez aussi visualiser le parcours par défaut proposé par **Course3d**.
+
+Une trace GPX (différente de celle par défaut) est disponible dans ce dépôt à [./gpx/tdfcml2020.gpx](./gpx/tdfcml2020.gpx).
 
 ## Librairies utilisées
 
