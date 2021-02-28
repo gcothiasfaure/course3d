@@ -4,7 +4,8 @@
   "description": "Mini 3D project TSI 2021 - Web vizualizer of a gpx file in a 3D animated environment with iTowns",
   "main": "src/main.js",
   "scripts": {
-    "build": "webpack --mode development --progress",
+    "build-prod": "webpack --mode production --progress",
+    "build-dev": "webpack --mode development --progress",
     "autobuild": "webpack --mode development --progress --watch"
   },
   "author": "Gaspard Cothias Faure - Félix Quinton",

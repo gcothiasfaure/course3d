@@ -1,12 +1,12 @@
 'use strict'
 
 
-import * as itowns from 'itowns';
+import {Coordinates,GlobeView,VIEW_EVENTS,Fetcher,WMTSSource,ColorLayer,ElevationLayer,GpxParser} from 'itowns';
 import bsCustomFileInput from 'bs-custom-file-input';
-import * as THREE from 'three';
+import {Vector3,CatmullRomCurve3,TubeGeometry,BufferGeometry,MeshBasicMaterial,Mesh,SphereGeometry} from 'three';
 
 
-// For dynamic file input in menu
+// For a dynamic file input in menu
 bsCustomFileInput.init();
 
 
@@ -15,9 +15,18 @@ const beginBtn = document.getElementById('beginBtn');
 const fileInput = document.getElementById('fileInput');
 const menuContainer = document.getElementById('menuContainer');
 const viewerDiv = document.getElementById('viewerDiv');
-const GPXParserOptions = {    in: {   crs: 'EPSG:4326'    },out: {    crs: 'EPSG:4326',   mergeFeatures: true }    };
-const INITIAL_CAMERA_RANGE=500;
-const INITIAL_CAMERA_TILT=90;
+
+const ITOWNS_GPX_PARSER_OPTIONS = { in: { crs: 'EPSG:4326' } , out: { crs: 'EPSG:4326' , mergeFeatures: true } };
+const INITIAL_CAMERA_RANGE = 5000;
+const INITIAL_CAMERA_TILT = 89;
+const STEP_NB_GEOMETRY_POSITIONS_3D_WAY = 100;
+
+let currGeometryPosition=0;
+let setIntervalToDraw3DWay;
+let nbGeometryPositions3DWay;
+let way_3d_positions;
+let current_drawing_point;
+let new_drawing_point;
 let view;
 let loadingScreenContainer;
 
@@ -45,6 +54,7 @@ function beginActivity(gpxFile) {
 
     viewerDiv.classList.add("viewerDiv");
 
+    document.body.style="overflow: hidden;"
     setupLoadingScreen();
 
     parseGPXFile(gpxFile);
@@ -55,29 +65,29 @@ function beginActivity(gpxFile) {
 function init3DMap(initialLng,initialLat) {
 
     const placement = {
-        coord: new itowns.Coordinates('EPSG:4326',initialLng,initialLat),
+        coord: new Coordinates('EPSG:4326',initialLng,initialLat),
         range: INITIAL_CAMERA_RANGE,
         tilt: INITIAL_CAMERA_TILT,
     }
 
-    view = new itowns.GlobeView(viewerDiv, placement);
+    view = new GlobeView(viewerDiv, placement);
 
     // Detect when hide loader screen
-    view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED, hideLoader);
+    view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED, hideLoader);
     setTimeout(hideLoader, 5000);
 
-    itowns.Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
-        config.source = new itowns.WMTSSource(config.source);
-        let layer = new itowns.ColorLayer('Ortho', config);
+    Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
+        config.source = new WMTSSource(config.source);
+        let layer = new ColorLayer('Ortho', config);
         view.addLayer(layer);
     });
     function addElevationLayerFromConfig(config) {
-        config.source = new itowns.WMTSSource(config.source);
-        let layer = new itowns.ElevationLayer(config.id, config);
+        config.source = new WMTSSource(config.source);
+        let layer = new ElevationLayer(config.id, config);
         view.addLayer(layer);
     }
-    itowns.Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
-    itowns.Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
+    Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
+    Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
 }
 
 
@@ -93,27 +103,27 @@ function parseGPXFile(gpxFile) {
             let parser = new DOMParser();
             let GPXXMLFile = parser.parseFromString(reader.result,"text/xml");
 
-            itowns.GpxParser.parse(GPXXMLFile,GPXParserOptions)
+            GpxParser.parse(GPXXMLFile,ITOWNS_GPX_PARSER_OPTIONS)
             .then(collection =>{
 
                 const vertices = collection.features[0].vertices;
                 init3DMap(vertices[0],vertices[1]);
 
-                view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)   });
+                view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)   });
 
             })
         }
     }
     else{
 
-        itowns.Fetcher.xml('./gpx/tdfgm2020.gpx')
-        .then(gpx => itowns.GpxParser.parse(gpx,GPXParserOptions))
+        Fetcher.xml('./gpx/tdfgm2020.gpx')
+        .then(gpx => GpxParser.parse(gpx,ITOWNS_GPX_PARSER_OPTIONS))
         .then(collection =>{
 
             const vertices = collection.features[0].vertices;
             init3DMap(vertices[0],vertices[1]);
 
-            view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)    });
+            view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)    });
 
         })
     }
@@ -121,39 +131,92 @@ function parseGPXFile(gpxFile) {
 
 
 // Trace GPX on map
-function traceGPX(vertices) {
-    addCurve(vertices);
+function traceGPX(CoordVertices) {
 
     // Add green sphere at start
-    addSphere(new itowns.Coordinates('EPSG:4326',vertices[0],vertices[1],vertices[2]+10).as(view.referenceCrs).toVector3(),0x21b710);
+    addSphere(new Coordinates('EPSG:4326',CoordVertices[0],CoordVertices[1],CoordVertices[2]+10).as(view.referenceCrs).toVector3(),0x21b710);
     
     // Add white sphere at end
-    addSphere(new itowns.Coordinates('EPSG:4326',vertices[vertices.length-3],vertices[vertices.length-2],vertices[vertices.length-1]+10).as(view.referenceCrs).toVector3(),0xffffff);
+    addSphere(new Coordinates('EPSG:4326',CoordVertices[CoordVertices.length-3],CoordVertices[CoordVertices.length-2],CoordVertices[CoordVertices.length-1]+10).as(view.referenceCrs).toVector3(),0xffffff);
+
+    initWay(CoordVertices);
+
+    setTimeout(() => {
+        console.log("Start drawing");
+
+        setIntervalToDraw3DWay = setInterval(() => {
+            updateWay();
+        }, 40);
+        
+    }, 2000);
+
 }
 
 
-// Add the curve to the 3D map
-function addCurve(vertices) {
+// Init 3D way
+function initWay(vertices) {
 
     let coordList=[];
 
     for (let i = 0; i < vertices.length/3; i++) {
-        coordList.push(new itowns.Coordinates('EPSG:4326',vertices[i*3],vertices[i*3+1],vertices[i*3+2]+5).as(view.referenceCrs).toVector3());
+        coordList.push(new Coordinates('EPSG:4326',vertices[i*3],vertices[i*3+1],vertices[i*3+2]+5).as(view.referenceCrs).toVector3());
     }
 
-    const pipeSpline = new THREE.CatmullRomCurve3( coordList );
+    const pipeSpline = new CatmullRomCurve3( coordList );
 
-    const geometry = new THREE.TubeGeometry( pipeSpline,coordList.length*10,10,8, false );
-    const material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
-    const mesh = new THREE.Mesh( geometry, material );
+    let geometry = new TubeGeometry( pipeSpline,coordList.length*10,10,8, false );
+    geometry = new BufferGeometry().fromGeometry( geometry );
+
+    // Do not display the geometry
+    geometry.setDrawRange(0,0);
+
+    // Init the display of the geometry
+    nbGeometryPositions3DWay = geometry.attributes.position.count;
+    way_3d_positions = geometry.attributes.position.array;
+
+    current_drawing_point=new Vector3(way_3d_positions[0],
+        way_3d_positions[1],
+        way_3d_positions[2]);
+        
+    geometry.attributes.position.needsUpdate = true;
+
+    const material = new MeshBasicMaterial( { color: 0xff0000 } );
+
+    const mesh = new Mesh( geometry, material );
     
     // update coordinate of the mesh
     mesh.updateMatrixWorld();
 
     // add the mesh to the scene
     view.scene.add(mesh);
+    view.way=mesh;
 
     // Notify view to update
+    view.notifyChange();
+}
+
+
+// Update 3D way
+function updateWay() {
+
+    if (currGeometryPosition>=nbGeometryPositions3DWay) {
+        clearInterval(setIntervalToDraw3DWay);
+        console.log("End drawing");
+        return;
+    }
+
+    currGeometryPosition = currGeometryPosition + STEP_NB_GEOMETRY_POSITIONS_3D_WAY;
+
+    new_drawing_point = new Vector3(way_3d_positions[currGeometryPosition*3],
+                                            way_3d_positions[currGeometryPosition*3+1],
+                                            way_3d_positions[currGeometryPosition*3+2]);
+
+    if (new_drawing_point.distanceTo(current_drawing_point)<60)     updateWay();
+
+    current_drawing_point=new_drawing_point;
+
+    view.way.geometry.setDrawRange(0,currGeometryPosition);
+    view.way.geometry.verticesNeedUpdate=true;
     view.notifyChange();
 }
 
@@ -161,9 +224,9 @@ function addCurve(vertices) {
 // Add a shere to 3D map
 function addSphere(coord,color) {
 
-    var geometry = new THREE.SphereGeometry( 20, 32, 32 );
-    var material = new THREE.MeshBasicMaterial({ color: color });
-    var mesh = new THREE.Mesh(geometry, material);
+    var geometry = new SphereGeometry( 20, 32, 32 );
+    var material = new MeshBasicMaterial({ color: color });
+    var mesh = new Mesh(geometry, material);
 
     // position and orientation of the mesh
     mesh.position.copy(coord);
@@ -174,8 +237,7 @@ function addSphere(coord,color) {
     // add the mesh to the scene
     view.scene.add(mesh);
 
-    // make the object usable from outside of the function
-    view.mesh1 = mesh;
+    // Notify view to update
     view.notifyChange();
 }
 

@@ -1,3 +1,14 @@
+/* GENERAL CSS */
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  height:100%;
+}
+
 /* LOADER */
 .loading-image {
   animation:spin 4s linear infinite;
@@ -16,18 +27,6 @@
   flex-direction: row;
   justify-content: center;
   align-items: center;
-}
-
-/* GENERAL CSS */
-
-html {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  height:100%;
-  overflow: hidden;
 }
 
 /* ITOWNS MAP */
