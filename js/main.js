@@ -16,9 +16,9 @@ const fileInput = document.getElementById('fileInput');
 const menuContainer = document.getElementById('menuContainer');
 const viewerDiv = document.getElementById('viewerDiv');
 const ITOWNS_GPX_PARSER_OPTIONS = { in: { crs: 'EPSG:4326' } , out: { crs: 'EPSG:4326' , mergeFeatures: true } };
-const INITIAL_CAMERA_RANGE = 5000;
-const INITIAL_CAMERA_TILT = 89;
+const INITIAL_CAMERA_RANGE = 7000;
 const STEP_NB_GEOMETRY_POSITIONS_3D_WAY = 100;
+const INITIAL_CAMERA_TRAVEL_TIME = 15000;
 
 let pathTravel;
 let time;
@@ -29,8 +29,12 @@ let way_3d_positions;
 let current_drawing_point;
 let new_drawing_point;
 let view;
+let camera;
 let loadingScreenContainer;
 let promises;
+let firstInitialCameraTravelPath=[];
+let atmosphere;
+
 
 // Display menu :
 beginBtn.addEventListener('click', onBegin);
@@ -63,15 +67,24 @@ function beginActivity(gpxFile) {
 
 
 // Initialize 3D map by defining initial placement and loading the globe
-function init3DMap(initialLng,initialLat) {
+function init3DMap() {
 
-    const placement = {
-        coord: new Coordinates('EPSG:4326',initialLng,initialLat),
-        range: INITIAL_CAMERA_RANGE,
-        tilt: INITIAL_CAMERA_TILT,
+    // const placement = {
+    //     coord: new Coordinates('EPSG:4326',initialLng,initialLat),
+    //     range: INITIAL_CAMERA_RANGE,
+    //     tilt: INITIAL_CAMERA_TILT,
+    // }
+
+    var placement = {
+        coord: new Coordinates('EPSG:4326', 2.351323, 48.856712),
+        range: 25000000,
     }
 
     view = new GlobeView(viewerDiv, placement);
+    camera = view.camera.camera3D;
+    atmosphere = view.getLayerById('atmosphere');
+    atmosphere.setRealisticOn(false);
+
     time = 1;
     pathTravel = [];
     promises = [];
@@ -114,7 +127,7 @@ function parseGPXFile(gpxFile) {
             .then(collection =>{
 
                 const vertices = collection.features[0].vertices;
-                init3DMap(vertices[0],vertices[1]);
+                init3DMap();
 
                 view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)   });
 
@@ -128,7 +141,7 @@ function parseGPXFile(gpxFile) {
         .then(collection =>{
 
             const vertices = collection.features[0].vertices;
-            init3DMap(vertices[0],vertices[1]);
+            init3DMap();
             for(let i = 0; i < vertices.length - 30; i +=30){
                 let X = Math.cos(vertices[i + 30] * Math.PI / 180) *
                  Math.sin((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
@@ -142,13 +155,13 @@ function parseGPXFile(gpxFile) {
                 // console.log(beta);
                 pathTravel.push({ coord: new Coordinates('EPSG:4326', vertices[i],vertices[i+1]), range: vertices[i+2] + 1000, time:  1000* time,  tilt: 30, heading: beta - 90});
             }
-            view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  
+            view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{
                 traceGPX(vertices);
                 Promise.all(promises).then(function _() {
                     // let's go
-                    travel().then(travel);
+                    // travel().then(travel);
                 }).catch(console.error)
-               });
+            });
 
         })
     }
@@ -158,11 +171,22 @@ function parseGPXFile(gpxFile) {
 // Trace GPX on map
 function traceGPX(CoordVertices) {
 
+    const initialLng=CoordVertices[0];
+    const initialLat=CoordVertices[1];
+    const initialAlt=CoordVertices[2]+10;
+    const lastLng=CoordVertices[CoordVertices.length-3];
+    const lastLat=CoordVertices[CoordVertices.length-2];
+    const lastAlt=CoordVertices[CoordVertices.length-1]+10;
+
+    firstInitialCameraTravel(initialLng,initialLat).then(() => {
+        console.log("ret");
+    });
+
     // Add green sphere at start
-    addSphere(new Coordinates('EPSG:4326',CoordVertices[0],CoordVertices[1],CoordVertices[2]+10).as(view.referenceCrs).toVector3(),0x21b710);
+    addSphere(new Coordinates('EPSG:4326',initialLng,initialLat,initialAlt).as(view.referenceCrs).toVector3(),0x21b710);
     
     // Add white sphere at end
-    addSphere(new Coordinates('EPSG:4326',CoordVertices[CoordVertices.length-3],CoordVertices[CoordVertices.length-2],CoordVertices[CoordVertices.length-1]+10).as(view.referenceCrs).toVector3(),0xffffff);
+    addSphere(new Coordinates('EPSG:4326',lastLng,lastLat,lastAlt).as(view.referenceCrs).toVector3(),0xffffff);
 
     initWay(CoordVertices);
 
@@ -298,10 +322,12 @@ function hideLoader() {
 }
 
 
+// Init first camera travel from global earth to starting point of the 3D way
+function firstInitialCameraTravel(initialLng,initialLat) {
+    firstInitialCameraTravelPath.push({ coord: new Coordinates('EPSG:4326', initialLng,initialLat), range: INITIAL_CAMERA_RANGE, time: INITIAL_CAMERA_TRAVEL_TIME });
+    return CameraUtils.sequenceAnimationsToLookAtTarget(view, camera, firstInitialCameraTravelPath);
+}
 
 function travel() {
-    var camera = view.camera.camera3D;
-
-    return CameraUtils
-        .sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
+    return CameraUtils.sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
 }
