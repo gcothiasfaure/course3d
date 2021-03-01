@@ -121,8 +121,6 @@ function parseGPXFile(gpxFile) {
 
             const vertices = collection.features[0].vertices;
             init3DMap(vertices[0],vertices[1]);
-            // pathTravel.push({ range: 1000, time: time, tilt: 5.59, heading: -40.9 });
-            
             for(let i = 0; i < vertices.length - 30; i +=30){
                 let X = Math.cos(vertices[i + 30] * Math.PI / 180) *
                  Math.sin((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
@@ -133,16 +131,7 @@ function parseGPXFile(gpxFile) {
                 Math.cos((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
 
                 let beta = Math.atan2(X,Y) * 180 / Math.PI;
-                // let dab = Math.sqrt(
-                //     Math.pow((vertices[i + 30] - vertices[i]),2) 
-                //     + Math.pow((vertices[i + 31] - vertices[i + 1]),2)
-                //      );
-                // let a = 2 * Math.atan(
-                //     (vertices[i + 30] - vertices[i])
-                //     /( dab
-                //     +  (vertices[i + 31] - vertices[i + 1])
-                //      ));
-                console.log(beta);
+                // console.log(beta);
                 pathTravel.push({ coord: new itowns.Coordinates('EPSG:4326', vertices[i],vertices[i+1]), range: vertices[i+2] + 1000, time:  1000* time,  tilt: 30, heading: beta - 90});
             }
             view.addEventListener(itowns.VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  
