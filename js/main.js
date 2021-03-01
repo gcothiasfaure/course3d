@@ -1,7 +1,7 @@
 'use strict'
 
 
-import {Coordinates,GlobeView,VIEW_EVENTS,Fetcher,WMTSSource,ColorLayer,ElevationLayer,GpxParser} from 'itowns';
+import {Coordinates,GlobeView,CameraUtils,VIEW_EVENTS,Fetcher,WMTSSource,ColorLayer,ElevationLayer,GpxParser} from 'itowns';
 import bsCustomFileInput from 'bs-custom-file-input';
 import {Vector3,CatmullRomCurve3,TubeGeometry,BufferGeometry,MeshBasicMaterial,Mesh,SphereGeometry} from 'three';
 
@@ -15,12 +15,13 @@ const beginBtn = document.getElementById('beginBtn');
 const fileInput = document.getElementById('fileInput');
 const menuContainer = document.getElementById('menuContainer');
 const viewerDiv = document.getElementById('viewerDiv');
-
 const ITOWNS_GPX_PARSER_OPTIONS = { in: { crs: 'EPSG:4326' } , out: { crs: 'EPSG:4326' , mergeFeatures: true } };
 const INITIAL_CAMERA_RANGE = 5000;
 const INITIAL_CAMERA_TILT = 89;
 const STEP_NB_GEOMETRY_POSITIONS_3D_WAY = 100;
 
+let pathTravel;
+let time;
 let currGeometryPosition=0;
 let setIntervalToDraw3DWay;
 let nbGeometryPositions3DWay;
@@ -29,7 +30,7 @@ let current_drawing_point;
 let new_drawing_point;
 let view;
 let loadingScreenContainer;
-
+let promises;
 
 // Display menu :
 beginBtn.addEventListener('click', onBegin);
@@ -71,7 +72,13 @@ function init3DMap(initialLng,initialLat) {
     }
 
     view = new GlobeView(viewerDiv, placement);
-
+    time = 1;
+    pathTravel = [];
+    promises = [];
+    // pathTravel.push({ coord: new Coordinates('EPSG:4326', 5.770120,45.208860), range: 100000, time: time * 0.2 });
+    // pathTravel.push({ range: 13932, time: time * 0.2, tilt: 7.59, heading: -110.9 });
+    // pathTravel.push({ tilt: 8, time: time * 0.2 });
+    // pathTravel.push({ range: 70000, time: time * 0.2, tilt: 5, heading: -90 });
     // Detect when hide loader screen
     view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED, hideLoader);
     setTimeout(hideLoader, 5000);
@@ -122,8 +129,26 @@ function parseGPXFile(gpxFile) {
 
             const vertices = collection.features[0].vertices;
             init3DMap(vertices[0],vertices[1]);
+            for(let i = 0; i < vertices.length - 30; i +=30){
+                let X = Math.cos(vertices[i + 30] * Math.PI / 180) *
+                 Math.sin((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
+                let Y = Math.cos(vertices[i] * Math.PI / 180)*
+                Math.sin(vertices[i + 30] * Math.PI / 180) -
+                Math.sin(vertices[i] * Math.PI / 180) *
+                Math.cos(vertices[i + 30] * Math.PI / 180) *
+                Math.cos((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
 
-            view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)    });
+                let beta = Math.atan2(X,Y) * 180 / Math.PI;
+                // console.log(beta);
+                pathTravel.push({ coord: new Coordinates('EPSG:4326', vertices[i],vertices[i+1]), range: vertices[i+2] + 1000, time:  1000* time,  tilt: 30, heading: beta - 90});
+            }
+            view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  
+                traceGPX(vertices);
+                Promise.all(promises).then(function _() {
+                    // let's go
+                    travel().then(travel);
+                }).catch(console.error)
+               });
 
         })
     }
@@ -270,4 +295,13 @@ function hideLoader() {
     })
 
     loadingScreenContainer = null;
+}
+
+
+
+function travel() {
+    var camera = view.camera.camera3D;
+
+    return CameraUtils
+        .sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
 }
