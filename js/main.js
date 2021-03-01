@@ -4,7 +4,7 @@
 import {Coordinates,GlobeView,CameraUtils,VIEW_EVENTS,Fetcher,WMTSSource,ColorLayer,ElevationLayer,GpxParser} from 'itowns';
 import bsCustomFileInput from 'bs-custom-file-input';
 import {Vector3,CatmullRomCurve3,TubeGeometry,BufferGeometry,MeshBasicMaterial,Mesh,SphereGeometry} from 'three';
-
+import * as THREE from 'three';
 
 // For a dynamic file input in menu
 bsCustomFileInput.init();
@@ -141,27 +141,12 @@ function parseGPXFile(gpxFile) {
         .then(collection =>{
 
             const vertices = collection.features[0].vertices;
-            init3DMap();
-            for(let i = 0; i < vertices.length - 30; i +=30){
-                let X = Math.cos(vertices[i + 30] * Math.PI / 180) *
-                 Math.sin((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
-                let Y = Math.cos(vertices[i] * Math.PI / 180)*
-                Math.sin(vertices[i + 30] * Math.PI / 180) -
-                Math.sin(vertices[i] * Math.PI / 180) *
-                Math.cos(vertices[i + 30] * Math.PI / 180) *
-                Math.cos((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
-
-                let beta = Math.atan2(X,Y) * 180 / Math.PI;
-                // console.log(beta);
-                pathTravel.push({ coord: new Coordinates('EPSG:4326', vertices[i],vertices[i+1]), range: vertices[i+2] + 1000, time:  1000* time,  tilt: 30, heading: beta - 90});
-            }
-            view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{
+            init3DMap(vertices[0],vertices[1]);
+            
+            view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  
                 traceGPX(vertices);
-                Promise.all(promises).then(function _() {
-                    // let's go
-                    // travel().then(travel);
-                }).catch(console.error)
-            });
+                
+               });
 
         })
     }
@@ -190,10 +175,18 @@ function traceGPX(CoordVertices) {
 
     initWay(CoordVertices);
 
+    calculatePath(CoordVertices);
+    // var camera =  new THREE.PerspectiveCamera( 84, window.innerWidth / window.innerHeight, 0.01, 1000 );
+    travel().then(travel());
+    // var camera = view.camera.camera3D;
+    
+    // let i = 0
     setTimeout(() => {
-        console.log("Start drawing");
-
+        
+        
         setIntervalToDraw3DWay = setInterval(() => {
+            // CameraUtils.sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
+            // i += 1;
             updateWay();
         }, 40);
         
@@ -328,6 +321,21 @@ function firstInitialCameraTravel(initialLng,initialLat) {
     return CameraUtils.sequenceAnimationsToLookAtTarget(view, camera, firstInitialCameraTravelPath);
 }
 
+
+function calculatePath(CoordVertices){
+    for(let i = 0; i < CoordVertices.length - 30; i +=30){
+        let X = Math.cos(CoordVertices[i + 30] * Math.PI / 180) *
+         Math.sin((CoordVertices[i + 31] - CoordVertices[i + 1]) * Math.PI / 180);
+        let Y = Math.cos(CoordVertices[i] * Math.PI / 180)*
+        Math.sin(CoordVertices[i + 30] * Math.PI / 180) -
+        Math.sin(CoordVertices[i] * Math.PI / 180) *
+        Math.cos(CoordVertices[i + 30] * Math.PI / 180) *
+        Math.cos((CoordVertices[i + 31] - CoordVertices[i + 1]) * Math.PI / 180);
+
+        let beta = Math.atan2(X,Y) * 180 / Math.PI;
+        pathTravel.push({ coord: new Coordinates('EPSG:4326', CoordVertices[i],CoordVertices[i+1]), range: CoordVertices[i+2] + 5000, time:  500* time,  tilt: 30, heading: beta - 90});
+    }
+}
 function travel() {
     return CameraUtils.sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
 }
