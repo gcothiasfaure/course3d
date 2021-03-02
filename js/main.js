@@ -18,15 +18,16 @@ const ITOWNS_GPX_PARSER_OPTIONS = { in: { crs: 'EPSG:4326' } , out: { crs: 'EPSG
 const FOLLOWING_CAMERA_TILT = 30;
 const FOLLOWING_CAMERA_TIME = 500;
 const STEP_NB_GEOMETRY_POSITIONS_3D_WAY = 100;
-const INITIAL_CAMERA_TRAVEL_TIME = 15000;
+const INITIAL_CAMERA_TRAVEL_TIME = 15;
+const FOLLOWING_CAMERA_UP_VECTOR3 = new Vector3(0,0,1);
 
 let pathTravel=[];
 let currGeometryPosition=0;
 let setIntervalToDraw3DWay;
 let nbGeometryPositions3DWay;
-let way_3d_positions;
-let current_drawing_point;
-let new_drawing_point;
+let way3DVerticesArray=[];
+let currentDrawingPoint;
+let newDrawingPoint;
 let view;
 let camera;
 let loadingScreenContainer;
@@ -101,7 +102,7 @@ function init3DMap() {
 // Parse chosen GPX file or fetch the default one
 function parseGPXFile(gpxFile) {
 
-    // Code repetition is mandator here
+    // Code repetition is mandatory here
 
     if (gpxFile) {
 
@@ -171,27 +172,32 @@ function setUpEnvironmentAnd3DWay(allGPXcoord) {
         // Wait a little after camera positioned
         setTimeout(() => {
             onCameraReadyToBegin();
-        }, 1000);
+        }, 3000);
 
     });
 }
 
 
-// When camera s set up on the start point => trace can begin
+// When camera set up on the start point => trace can begin
 function onCameraReadyToBegin() {
 
-    // var camera =  new THREE.PerspectiveCamera( 84, window.innerWidth / window.innerHeight, 0.01, 1000 );
-    followingCameraTravel().then(followingCameraTravel);
-    // var camera = view.camera.camera3D;
-    
-    // let i = 0
+    // followingCameraTravel().then(followingCameraTravel);
+
+    const positionVector3 = new Vector3(way3DVerticesArray[0]+200,way3DVerticesArray[1]+200,way3DVerticesArray[2]+200)
+    const lookAtVector3 = new Vector3(way3DVerticesArray[3000],way3DVerticesArray[3001],way3DVerticesArray[3002])
+    setFollowingCameraPositionAndLookAt(positionVector3,lookAtVector3);
 
     setIntervalToDraw3DWay = setInterval(() => {
-        // CameraUtils.sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
-        // i += 1;
         traceGPX();
     }, 40);
 
+}
+
+
+// Position camera following the 3D way
+function setFollowingCameraPositionAndLookAt(positionVector3,lookAtVector3) {
+    camera.position.copy(positionVector3);
+    camera.matrix.lookAt(positionVector3,lookAtVector3,FOLLOWING_CAMERA_UP_VECTOR3);
 }
 
 
@@ -214,11 +220,11 @@ function setUp3DWay(vertices) {
 
     // Init the display of the geometry
     nbGeometryPositions3DWay = geometry.attributes.position.count;
-    way_3d_positions = geometry.attributes.position.array;
+    way3DVerticesArray = geometry.attributes.position.array;
 
-    current_drawing_point=new Vector3(way_3d_positions[0],
-        way_3d_positions[1],
-        way_3d_positions[2]);
+    currentDrawingPoint=new Vector3(way3DVerticesArray[0],
+        way3DVerticesArray[1],
+        way3DVerticesArray[2]);
         
     geometry.attributes.position.needsUpdate = true;
 
@@ -243,19 +249,23 @@ function traceGPX() {
 
     if (currGeometryPosition>=nbGeometryPositions3DWay) {
         clearInterval(setIntervalToDraw3DWay);
-        console.log("End drawing");
         return;
     }
 
     currGeometryPosition = currGeometryPosition + STEP_NB_GEOMETRY_POSITIONS_3D_WAY;
 
-    new_drawing_point = new Vector3(way_3d_positions[currGeometryPosition*3],
-                                            way_3d_positions[currGeometryPosition*3+1],
-                                            way_3d_positions[currGeometryPosition*3+2]);
+    newDrawingPoint = new Vector3(way3DVerticesArray[currGeometryPosition*3],
+                                            way3DVerticesArray[currGeometryPosition*3+1],
+                                            way3DVerticesArray[currGeometryPosition*3+2]);
 
-    if (new_drawing_point.distanceTo(current_drawing_point)<60)     traceGPX();
+    if (newDrawingPoint.distanceTo(currentDrawingPoint)<60)     traceGPX();
 
-    current_drawing_point=new_drawing_point;
+    currentDrawingPoint = newDrawingPoint;
+
+    let currentDrawingPointIn4326 = new Coordinates(view.referenceCrs,currentDrawingPoint).as('EPSG:4326');
+    // currentDrawingPointIn4326.altitude.set(300);
+
+    console.log(currentDrawingPointIn4326);
 
     view.way.geometry.setDrawRange(0,currGeometryPosition);
     view.way.geometry.verticesNeedUpdate=true;
