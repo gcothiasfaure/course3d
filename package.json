@@ -19,8 +19,7 @@
     "buffer": "^6.0.3",
     "itowns": "^2.30.0",
     "string_decoder": "^1.3.0",
-    "three": "^0.124.0",
-    "vue": "^2.6.12"
+    "three": "^0.124.0"
   },
   "devDependencies": {
     "webpack": "^5.23.0",
