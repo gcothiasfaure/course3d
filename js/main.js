@@ -180,8 +180,6 @@ function setUpEnvironmentAnd3DWay(allGPXcoord) {
 // When camera s set up on the start point => trace can begin
 function onCameraReadyToBegin() {
 
-    console.log("begin")
-
     // var camera =  new THREE.PerspectiveCamera( 84, window.innerWidth / window.innerHeight, 0.01, 1000 );
     followingCameraTravel().then(followingCameraTravel);
     // var camera = view.camera.camera3D;
