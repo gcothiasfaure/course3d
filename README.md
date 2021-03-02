@@ -4,9 +4,26 @@
 
 Il a été développé dans le cadre du mini projet 3D de TSI-C 2021 à l'ENSG.
 
+
 ## Déploiement
 
 **Course3d** est déployé à cette adresse : https://gaspardcothiasfaure.github.io/course3d/
+
+
+## Utilisation
+
+Pour utiliser **Course3d**, importez la trace GPX de votre parcours à l'accueil. Puis visualisez votre parcours dans un environnement 3D à caméra dynamique. 
+
+Vous pouvez aussi visualiser le parcours par défaut proposé par **Course3d**.
+
+Une trace GPX (différente de celle par défaut) est disponible dans ce dépôt à [./gpx/tdfcml2020.gpx](./gpx/tdfcml2020.gpx).
+
+## Démonstration
+
+##### Photos des différentes étapes lors de l'utilisation de Course3d :
+
+##### Vidéo de démonstartion :
+
 
 ## Installation
 
@@ -24,19 +41,25 @@ Pour installer **Course3d** :
 
 Dans chaque cas, un *bundle* est généré ([./dist/bundle.js](./dist/bundle.js)), il est lié aux autres fichiers statiques de **Course3d**.
 
-## Utilisation
-
-Pour utiliser **Course3d**, importez la trace GPX de votre parcours à l'accueil. Puis visualisez votre parcours dans un environnement 3D à caméra dynamique. 
-
-Vous pouvez aussi visualiser le parcours par défaut proposé par **Course3d**.
-
-Une trace GPX (différente de celle par défaut) est disponible dans ce dépôt à [./gpx/tdfcml2020.gpx](./gpx/tdfcml2020.gpx).
 
 ## Fonctionnalités implémentées
 
-## Démonstration
+**Course3d** permet à l'utilisateur de visualiser son parcours (importé via sa trace GPX dans le menu) dans un environnement 3D à caméra dynqmique.
+Après avoir importé son tracé (ou avoir commencé avec le tracé par défaut), **Course3d** permet de visualiser :
+
+- Une animation de caméra d'une vision du globe vers le point de départ du tracé
+- Des marqueurs des points des départs et d'arrivée
+- Le tracé du parcours dévoilé de façon dynamique et constante
+- Le tracé depuis une caméra dynamique qui suit l'avancement du tracé
+
 
 ## Améliorations possibles
+
+- Permettre à l'utilisateur :
+  - De mettre en pause le dévoilement du tracé et e movement de la cméra
+  - De choisir la durée du tracé et sa couleur
+- Ne pas permettre à l'utilisateur de stopper la visualisation dynamique en touchant la carte 3D
+
 
 ## Librairies utilisées
 
