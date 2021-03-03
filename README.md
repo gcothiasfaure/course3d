@@ -69,6 +69,8 @@ Après avoir importé son tracé (ou avoir commencé avec le tracé par défaut)
 
 - [Bootstrap](https://github.com/twbs/bootstrap)
 
+- [tween.js](https://github.com/tweenjs/tween.js)
+
 ## Auteurs
 
 - Gaspard Cothias Faure
