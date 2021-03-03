@@ -36,6 +36,7 @@ let view;
 let camera;
 let loadingScreenContainer;
 let atmosphere;
+let iterationNumerinUpdateFollowingCamera = 0;
 
 
 // Display menu :
@@ -78,12 +79,14 @@ function init3DMap() {
     }
 
     view = new GlobeView(viewerDiv, initialPlacement);
+
     camera = view.camera.camera3D;
     atmosphere = view.getLayerById('atmosphere');
     atmosphere.setRealisticOn(false);
 
     // Hide loader and display globe when initialized or after 5 sec
     view.addEventListener(GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, hideLoader);
+
     setTimeout(hideLoader, 5000);
 
     Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
@@ -193,10 +196,8 @@ function onCameraReadyToBegin() {
 
     setIntervalToDraw3DWay = setInterval(traceGPX, 40);
 
-    // followingCameraTravel1().then(followingCameraTravel1);
-
     setIntervalUpdateFollowingCamera = setInterval(updateFollowingCamera, UPDATE_CAMERA_TIME);
-
+    
 }
 
 
@@ -204,36 +205,33 @@ function onCameraReadyToBegin() {
 function updateFollowingCamera() {
     const desiredCameraPositionIn4326 = new Coordinates(view.referenceCrs,currentDrawingPoint).as('EPSG:4326');
 
-    console.log(desiredCameraPositionIn4326);
-
     let cameraParameters;
+    let newHeading = null;
+
     if (previousCurrentDrawingPoint) {
 
         const previousCurrentDrawingPointCoord = new Coordinates(view.referenceCrs,previousCurrentDrawingPoint).as('EPSG:4326');
 
-        cameraParameters = {
-            coord: desiredCameraPositionIn4326,
-            range: desiredCameraPositionIn4326.altitude+5000, 
-            time:  UPDATE_CAMERA_TIME,  
-            tilt: FOLLOWING_CAMERA_TILT,
-            heading:calculateHeadingBetweenTwoCoord4326(previousCurrentDrawingPointCoord,desiredCameraPositionIn4326),
-            easing:Easing.Linear.None
+        iterationNumerinUpdateFollowingCamera++
+
+        if (iterationNumerinUpdateFollowingCamera==5) {
+
+            newHeading = calculateHeadingBetweenTwoCoord4326(previousCurrentDrawingPointCoord,desiredCameraPositionIn4326);
+
+            iterationNumerinUpdateFollowingCamera=0;
         }
-
-    }
-    else{
-
-        cameraParameters = {
-            coord: desiredCameraPositionIn4326, 
-            range: desiredCameraPositionIn4326.altitude+5000, 
-            time:  UPDATE_CAMERA_TIME,  
-            tilt: FOLLOWING_CAMERA_TILT, 
-            easing:Easing.Linear.None
-        }
-
     }
 
     previousCurrentDrawingPoint = currentDrawingPoint;
+
+    cameraParameters = {
+        coord: desiredCameraPositionIn4326, 
+        range: desiredCameraPositionIn4326.altitude+5000, 
+        time:  UPDATE_CAMERA_TIME,
+        tilt: FOLLOWING_CAMERA_TILT,
+        heading:newHeading,
+        easing:Easing.Linear.None
+    }
 
     cameraTravel(cameraParameters);
 }
@@ -382,31 +380,5 @@ function calculateHeadingBetweenTwoCoord4326(coord1,coord2){
 
     let beta = Math.atan2(X,Y) * 180 / Math.PI;
 
-    return beta -90;
-}
-
-
-
-
-// ////////////////////// UNUSED FUNC
-
-// Calculate the path of the following camera above the 3D way
-function calculateFollowingCameraPath(allGPXcoord){
-
-    for(let i = 0; i < allGPXcoord.length - 30; i +=30){
-
-        let X = Math.cos(allGPXcoord[i + 30] * Math.PI / 180) *
-            Math.sin((allGPXcoord[i + 31] - allGPXcoord[i + 1]) * Math.PI / 180);
-
-        let Y = Math.cos(allGPXcoord[i] * Math.PI / 180)*
-            Math.sin(allGPXcoord[i + 30] * Math.PI / 180) -
-            Math.sin(allGPXcoord[i] * Math.PI / 180) *
-            Math.cos(allGPXcoord[i + 30] * Math.PI / 180) *
-            Math.cos((allGPXcoord[i + 31] - allGPXcoord[i + 1]) * Math.PI / 180);
-
-        let beta = Math.atan2(X,Y) * 180 / Math.PI;
-
-        pathTravel.push({ coord: new Coordinates('EPSG:4326', allGPXcoord[i],allGPXcoord[i+1]), range: allGPXcoord[i+2] + 5000, time:  FOLLOWING_CAMERA_TIME,  tilt: FOLLOWING_CAMERA_TILT, heading: beta - 90,easing:Easing.Linear.None});
-    }
-    return pathTravel;
+    return beta - 90;
 }
