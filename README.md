@@ -32,7 +32,7 @@ Le code source (JavaScript) de **Course3d** se trouve dans [./js/main.js](./js/m
 Pour installer **Course3d** : 
 
 - Copiez le dépôt
-- A la racine du dépot : `npm install`
+- A la racine du dépot : `npm install --legacy-peer-deps`
 
 **Course3d** utilise [Webpack](https://github.com/webpack/webpack) comme groupeur de modules JavaScript :
 - Pour lancer un build en mode développement : `npm run build-dev`
