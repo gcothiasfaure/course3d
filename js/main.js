@@ -1,8 +1,9 @@
 'use strict'
 
 
-import {Coordinates,GlobeView,CameraUtils,VIEW_EVENTS,Fetcher,WMTSSource,ColorLayer,ElevationLayer,GpxParser} from 'itowns';
+import {Coordinates,GlobeView,CameraUtils,VIEW_EVENTS,Fetcher,WMTSSource,ColorLayer,ElevationLayer,GpxParser,GLOBE_VIEW_EVENTS} from 'itowns';
 import bsCustomFileInput from 'bs-custom-file-input';
+import {Easing} from '@tweenjs/tween.js';
 import {Vector3,CatmullRomCurve3,TubeGeometry,BufferGeometry,MeshBasicMaterial,Mesh,SphereGeometry} from 'three';
 
 
@@ -16,21 +17,27 @@ const fileInput = document.getElementById('fileInput');
 const menuContainer = document.getElementById('menuContainer');
 const viewerDiv = document.getElementById('viewerDiv');
 const ITOWNS_GPX_PARSER_OPTIONS = { in: { crs: 'EPSG:4326' } , out: { crs: 'EPSG:4326' , mergeFeatures: true } };
-const INITIAL_CAMERA_RANGE = 5000;
-const INITIAL_CAMERA_TILT = 89;
+const FOLLOWING_CAMERA_TILT = 27;
+const FOLLOWING_CAMERA_TIME = 500;
 const STEP_NB_GEOMETRY_POSITIONS_3D_WAY = 100;
+const INITIAL_CAMERA_TRAVEL_TIME = 15000;
+const UPDATE_CAMERA_TIME = 700;
 
-let pathTravel;
-let time;
+let pathTravel=[];
 let currGeometryPosition=0;
 let setIntervalToDraw3DWay;
+let setIntervalUpdateFollowingCamera;
 let nbGeometryPositions3DWay;
-let way_3d_positions;
-let current_drawing_point;
-let new_drawing_point;
+let way3DVerticesArray=[];
+let currentDrawingPoint;
+let previousCurrentDrawingPoint;
+let newDrawingPoint;
 let view;
+let camera;
 let loadingScreenContainer;
-let promises;
+let atmosphere;
+let iterationNumerinUpdateFollowingCamera = 0;
+
 
 // Display menu :
 beginBtn.addEventListener('click', onBegin);
@@ -55,7 +62,8 @@ function beginActivity(gpxFile) {
 
     viewerDiv.classList.add("viewerDiv");
 
-    document.body.style="overflow: hidden;"
+    document.body.style="overflow: hidden; height:100%;";
+
     setupLoadingScreen();
 
     parseGPXFile(gpxFile);
@@ -63,24 +71,22 @@ function beginActivity(gpxFile) {
 
 
 // Initialize 3D map by defining initial placement and loading the globe
-function init3DMap(initialLng,initialLat) {
+function init3DMap() {
 
-    const placement = {
-        coord: new Coordinates('EPSG:4326',initialLng,initialLat),
-        range: INITIAL_CAMERA_RANGE,
-        tilt: INITIAL_CAMERA_TILT,
+    const initialPlacement = {
+        coord: new Coordinates('EPSG:4326', 2.351323, 48.856712),
+        range: 25000000,
     }
 
-    view = new GlobeView(viewerDiv, placement);
-    time = 1;
-    pathTravel = [];
-    promises = [];
-    // pathTravel.push({ coord: new Coordinates('EPSG:4326', 5.770120,45.208860), range: 100000, time: time * 0.2 });
-    // pathTravel.push({ range: 13932, time: time * 0.2, tilt: 7.59, heading: -110.9 });
-    // pathTravel.push({ tilt: 8, time: time * 0.2 });
-    // pathTravel.push({ range: 70000, time: time * 0.2, tilt: 5, heading: -90 });
-    // Detect when hide loader screen
-    view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED, hideLoader);
+    view = new GlobeView(viewerDiv, initialPlacement);
+
+    camera = view.camera.camera3D;
+    atmosphere = view.getLayerById('atmosphere');
+    atmosphere.setRealisticOn(false);
+
+    // Hide loader and display globe when initialized or after 5 sec
+    view.addEventListener(GLOBE_VIEW_EVENTS.GLOBE_INITIALIZED, hideLoader);
+
     setTimeout(hideLoader, 5000);
 
     Fetcher.json('./layers/JSONLayers/Ortho.json').then(function _(config) {
@@ -88,11 +94,13 @@ function init3DMap(initialLng,initialLat) {
         let layer = new ColorLayer('Ortho', config);
         view.addLayer(layer);
     });
+
     function addElevationLayerFromConfig(config) {
         config.source = new WMTSSource(config.source);
         let layer = new ElevationLayer(config.id, config);
         view.addLayer(layer);
     }
+
     Fetcher.json('./layers/JSONLayers/WORLD_DTM.json').then(addElevationLayerFromConfig);
     Fetcher.json('./layers/JSONLayers/IGN_MNT_HIGHRES.json').then(addElevationLayerFromConfig);
 }
@@ -100,23 +108,29 @@ function init3DMap(initialLng,initialLat) {
 
 // Parse chosen GPX file or fetch the default one
 function parseGPXFile(gpxFile) {
+
+    // Code repetition is mandatory here
+
     if (gpxFile) {
 
         let reader = new FileReader();
+
         reader.readAsText(gpxFile);
 
         reader.onloadend = function(){
 
             let parser = new DOMParser();
+
             let GPXXMLFile = parser.parseFromString(reader.result,"text/xml");
 
             GpxParser.parse(GPXXMLFile,ITOWNS_GPX_PARSER_OPTIONS)
-            .then(collection =>{
+            .then(parsedGPX =>{
 
-                const vertices = collection.features[0].vertices;
-                init3DMap(vertices[0],vertices[1]);
+                const allGPXcoord = parsedGPX.features[0].vertices;
 
-                view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  traceGPX(vertices)   });
+                init3DMap();
+
+                setUpEnvironmentAnd3DWay(allGPXcoord);
 
             })
         }
@@ -125,30 +139,13 @@ function parseGPXFile(gpxFile) {
 
         Fetcher.xml('./gpx/tdfgm2020.gpx')
         .then(gpx => GpxParser.parse(gpx,ITOWNS_GPX_PARSER_OPTIONS))
-        .then(collection =>{
+        .then(parsedGPX =>{
 
-            const vertices = collection.features[0].vertices;
-            init3DMap(vertices[0],vertices[1]);
-            for(let i = 0; i < vertices.length - 30; i +=30){
-                let X = Math.cos(vertices[i + 30] * Math.PI / 180) *
-                 Math.sin((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
-                let Y = Math.cos(vertices[i] * Math.PI / 180)*
-                Math.sin(vertices[i + 30] * Math.PI / 180) -
-                Math.sin(vertices[i] * Math.PI / 180) *
-                Math.cos(vertices[i + 30] * Math.PI / 180) *
-                Math.cos((vertices[i + 31] - vertices[i + 1]) * Math.PI / 180);
+            const allGPXcoord = parsedGPX.features[0].vertices;
 
-                let beta = Math.atan2(X,Y) * 180 / Math.PI;
-                // console.log(beta);
-                pathTravel.push({ coord: new Coordinates('EPSG:4326', vertices[i],vertices[i+1]), range: vertices[i+2] + 1000, time:  1000* time,  tilt: 30, heading: beta - 90});
-            }
-            view.addEventListener(VIEW_EVENTS.LAYERS_INITIALIZED,()=>{  
-                traceGPX(vertices);
-                Promise.all(promises).then(function _() {
-                    // let's go
-                    travel().then(travel);
-                }).catch(console.error)
-               });
+            init3DMap();
+
+            setUpEnvironmentAnd3DWay(allGPXcoord);
 
         })
     }
@@ -156,30 +153,92 @@ function parseGPXFile(gpxFile) {
 
 
 // Trace GPX on map
-function traceGPX(CoordVertices) {
+function setUpEnvironmentAnd3DWay(allGPXcoord) {
+
+    const startCoord = new Coordinates('EPSG:4326',allGPXcoord[0],allGPXcoord[1],allGPXcoord[2]+10);
+    const secondCoord = new Coordinates('EPSG:4326',allGPXcoord[3],allGPXcoord[4],allGPXcoord[5]+10);
+    const endCoord = new Coordinates('EPSG:4326',allGPXcoord[allGPXcoord.length-3],allGPXcoord[allGPXcoord.length-2],allGPXcoord[allGPXcoord.length-1]+10);
 
     // Add green sphere at start
-    addSphere(new Coordinates('EPSG:4326',CoordVertices[0],CoordVertices[1],CoordVertices[2]+10).as(view.referenceCrs).toVector3(),0x21b710);
+    addSphere(startCoord.as(view.referenceCrs).toVector3(),0x21b710);
     
     // Add white sphere at end
-    addSphere(new Coordinates('EPSG:4326',CoordVertices[CoordVertices.length-3],CoordVertices[CoordVertices.length-2],CoordVertices[CoordVertices.length-1]+10).as(view.referenceCrs).toVector3(),0xffffff);
+    addSphere(endCoord.as(view.referenceCrs).toVector3(),0xffffff);
 
-    initWay(CoordVertices);
+    setUp3DWay(allGPXcoord);
 
+    // Wait a little after loading screen => brutal otherwise
     setTimeout(() => {
-        console.log("Start drawing");
 
-        setIntervalToDraw3DWay = setInterval(() => {
-            updateWay();
-        }, 40);
+        const followingCameraPathFirstPosition = { 
+            coord: startCoord, 
+            range: startCoord.altitude + 5000, 
+            time:  INITIAL_CAMERA_TRAVEL_TIME,  
+            tilt: FOLLOWING_CAMERA_TILT, 
+            heading: calculateHeadingBetweenTwoCoord4326(startCoord,secondCoord),
+            easing:Easing.Quartic.Out
+        }
         
-    }, 2000);
+        cameraTravel(followingCameraPathFirstPosition).then(() => {
+
+            // Wait a little after camera positioned
+            setTimeout(onCameraReadyToBegin, 3000);
+    
+        });
+        
+    }, 1000);
 
 }
 
 
+// When camera set up on the start point => trace can begin
+function onCameraReadyToBegin() {
+
+    setIntervalToDraw3DWay = setInterval(traceGPX, 40);
+
+    setIntervalUpdateFollowingCamera = setInterval(updateFollowingCamera, UPDATE_CAMERA_TIME);
+    
+}
+
+
+// Update parameters of the following camera to follow the 3D trace
+function updateFollowingCamera() {
+    const desiredCameraPositionIn4326 = new Coordinates(view.referenceCrs,currentDrawingPoint).as('EPSG:4326');
+
+    let cameraParameters;
+    let newHeading = null;
+
+    if (previousCurrentDrawingPoint) {
+
+        const previousCurrentDrawingPointCoord = new Coordinates(view.referenceCrs,previousCurrentDrawingPoint).as('EPSG:4326');
+
+        iterationNumerinUpdateFollowingCamera++
+
+        if (iterationNumerinUpdateFollowingCamera==5) {
+
+            newHeading = calculateHeadingBetweenTwoCoord4326(previousCurrentDrawingPointCoord,desiredCameraPositionIn4326);
+
+            iterationNumerinUpdateFollowingCamera=0;
+        }
+    }
+
+    previousCurrentDrawingPoint = currentDrawingPoint;
+
+    cameraParameters = {
+        coord: desiredCameraPositionIn4326, 
+        range: desiredCameraPositionIn4326.altitude+5000, 
+        time:  UPDATE_CAMERA_TIME,
+        tilt: FOLLOWING_CAMERA_TILT,
+        heading:newHeading,
+        easing:Easing.Linear.None
+    }
+
+    cameraTravel(cameraParameters);
+}
+
+
 // Init 3D way
-function initWay(vertices) {
+function setUp3DWay(vertices) {
 
     let coordList=[];
 
@@ -197,11 +256,12 @@ function initWay(vertices) {
 
     // Init the display of the geometry
     nbGeometryPositions3DWay = geometry.attributes.position.count;
-    way_3d_positions = geometry.attributes.position.array;
+    way3DVerticesArray = geometry.attributes.position.array;
 
-    current_drawing_point=new Vector3(way_3d_positions[0],
-        way_3d_positions[1],
-        way_3d_positions[2]);
+    // Init currentDrawingPoint
+    currentDrawingPoint=new Vector3(way3DVerticesArray[0],
+        way3DVerticesArray[1],
+        way3DVerticesArray[2]);
         
     geometry.attributes.position.needsUpdate = true;
 
@@ -222,23 +282,25 @@ function initWay(vertices) {
 
 
 // Update 3D way
-function updateWay() {
+function traceGPX() {
 
     if (currGeometryPosition>=nbGeometryPositions3DWay) {
+        // End of drawing => finish trace and update of following camera
         clearInterval(setIntervalToDraw3DWay);
-        console.log("End drawing");
+        clearInterval(setIntervalUpdateFollowingCamera);
         return;
     }
 
     currGeometryPosition = currGeometryPosition + STEP_NB_GEOMETRY_POSITIONS_3D_WAY;
 
-    new_drawing_point = new Vector3(way_3d_positions[currGeometryPosition*3],
-                                            way_3d_positions[currGeometryPosition*3+1],
-                                            way_3d_positions[currGeometryPosition*3+2]);
+    newDrawingPoint = new Vector3(way3DVerticesArray[currGeometryPosition*3],
+                                    way3DVerticesArray[currGeometryPosition*3+1],
+                                    way3DVerticesArray[currGeometryPosition*3+2]
+    );
 
-    if (new_drawing_point.distanceTo(current_drawing_point)<60)     updateWay();
+    if (newDrawingPoint.distanceTo(currentDrawingPoint)<50)     traceGPX();
 
-    current_drawing_point=new_drawing_point;
+    currentDrawingPoint = newDrawingPoint;
 
     view.way.geometry.setDrawRange(0,currGeometryPosition);
     view.way.geometry.verticesNeedUpdate=true;
@@ -298,10 +360,25 @@ function hideLoader() {
 }
 
 
+// Camera travel with one point
+function cameraTravel(travelPathParam) {
+    return CameraUtils.sequenceAnimationsToLookAtTarget(view, camera, [travelPathParam]);
+}
 
-function travel() {
-    var camera = view.camera.camera3D;
 
-    return CameraUtils
-        .sequenceAnimationsToLookAtTarget(view, camera, pathTravel);
+// Calculate heading between to coordinates in 4326
+function calculateHeadingBetweenTwoCoord4326(coord1,coord2){
+
+    let X = Math.cos(coord2.longitude * Math.PI / 180) *
+        Math.sin((coord2.latitude - coord1.latitude) * Math.PI / 180);
+
+    let Y = Math.cos(coord1.longitude * Math.PI / 180)*
+        Math.sin(coord2.longitude * Math.PI / 180) -
+        Math.sin(coord1.longitude * Math.PI / 180) *
+        Math.cos(coord2.longitude * Math.PI / 180) *
+        Math.cos((coord2.latitude - coord1.latitude) * Math.PI / 180);
+
+    let beta = Math.atan2(X,Y) * 180 / Math.PI;
+
+    return beta - 90;
 }
