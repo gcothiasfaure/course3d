@@ -1,21 +1,44 @@
 <!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course3d</title>
-    <link rel="shortcut icon" href="./assets/icon.png" type="image/png">
-    <link rel="stylesheet" type="text/css" href="./lib/css/example.css">
-    <link rel="stylesheet" type="text/css" href="./lib/css/LoadingScreen.css">
-    <link rel="stylesheet" type="text/css" href="./index.css">
-</head>
-<body>
-    <div id="viewerDiv"></div>
-    <script src="./lib/js/itowns.js"></script>
-    <script src="./lib/js/LoadingScreen.js"></script>
-    <script src="./lib/js/GuiTools.js"></script>
-    <script src="index.js"></script>
-    
-</body>
+<html>
+    <head>
+        <title>Course3d</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="./css/index.css">
+        <link rel="stylesheet" href="./css/bootstrap.min.css">
+        <link rel="shortcut icon" href="./assets/logo.ico" type="image/x-icon">
+    </head>
+    <body>
+
+        <!-- MENU -->
+        <div class="mt-5" id="menuContainer">
+            <div id="menu">
+                <div class="d-flex justify-content-center mb-4" id="logoContainer">
+                    <img class="logo-menu" src="./assets/logo.png" alt="Course3d logo">
+                    <h1>Course3d</h1>
+                </div>
+                <div class="mb-5 text-center">
+                    <p><b>Course3d</b> est un outil de visualisation web d'un parcours dans un environnement 3D à caméra dynamique, basé sur <a target="_blank" href="http://www.itowns-project.org/">iTowns</a>.</p>
+                </div>
+                <div class="mb-5">
+                    <label for="fileInput">Importer la trace GPX de votre parcours</label>
+                    <div class="custom-file">
+                        <input accept=".gpx" id="fileInput" type="file" class="custom-file-input"/>
+                        <label class="custom-file-label" for="fileInput" data-browse="Explorer">Choisir un fichier</label>
+                    </div>
+                </div>
+                <div class="mb-3 text-center" id="beginBtnConatiner">
+                    <button class="btn btn-primary" id="beginBtn" autofocus>Démarrer</button>
+                </div>
+                <div class="small text-center">
+                    <p>Si vous ne chosissez pas de fichier GPX, la visualisation démarrera avec le parcours par défaut, <a target="_blank" href="https://fr.wikipedia.org/wiki/17e_%C3%A9tape_du_Tour_de_France_2020">l'étape 17 du Tour de France 2020, entre Grenoble et Méribel - Col de la Loze</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ITOWNS MAP -->
+        <div id="viewerDiv"></div>
+
+        <script src="dist/bundle.js"></script>
+    </body>
 </html>
