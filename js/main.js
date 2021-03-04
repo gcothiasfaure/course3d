@@ -24,6 +24,7 @@ const UPDATE_CAMERA_TIME = 700;
 const TRACE_GPX_UPDATE_TIME = 40;
 
 let currGeometryPosition=0;
+let iterationNumerinUpdateFollowingCamera = 0;
 let setIntervalToDraw3DWay;
 let setIntervalUpdateFollowingCamera;
 let currentDrawingPoint;
@@ -212,9 +213,6 @@ function updateFollowingCamera() {
     let cameraParameters;
     let newHeading = null;
 
-    // One time out of five in this function, heading will be update to prevent camera to do too much backflips
-    let iterationNumerinUpdateFollowingCamera = 0;
-
     if (previousCurrentDrawingPoint) {
 
         // Compute last currentDrawingPoint position
@@ -222,6 +220,7 @@ function updateFollowingCamera() {
 
         iterationNumerinUpdateFollowingCamera++
 
+        // One time out of five in this function, heading will be update to prevent camera to do too much backflips
         if (iterationNumerinUpdateFollowingCamera==5) {
             // Update heading poition
 
