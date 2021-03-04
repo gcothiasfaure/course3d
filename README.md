@@ -22,6 +22,25 @@ Une trace GPX (différente de celle par défaut) est disponible dans ce dépôt 
 
 ##### Photos des différentes étapes lors de l'utilisation de Course3d :
 
+Lorsque vous vous connectez sur le site vous arrivez sur l'acceuil, vous pouvez soit ajouter votre propre fichier GPX soit utiliser le fichier GPX test du site:
+# <img src="./assets/acceuil.PNG" width="160" height="90" alt="acceuil"/>
+
+Une fois votre fichier GPX entré, vous serez déplacé du globe jusqu'au premier point de votre trace GPX symbolisé par un point vert:
+
+# <img src="./assets/initialisation.PNG" width="160" height="90" alt="initialisation"/>
+
+Le chemin va alors commencer à suivre la trace GPX et la camera fera de même avec un léger retard:
+
+# <img src="./assets/suivit.PNG" width="160" height="90" alt="suivit"/>
+
+Toutes les 5 secondes la camera effectuera une rotation afin de s'aligner avec la tête du tracé, cela permettra d'avoir (une bonne partie du temps) le tracé récent à l'écran même dans des zones montagneuses:
+
+# <img src="./assets/montagne_pe.PNG" width="160" height="90" alt="montagne_pe"/>
+
+Enfin lorsque le tracé arrive à la fin de la trace GPX, le dernier point s'affiche en blanc et la camera s'arrête: 
+
+# <img src="./assets/arrive_pe.PNG" width="160" height="90" alt="arrive"/>
+
 ##### Vidéo de démonstartion :
 
 
