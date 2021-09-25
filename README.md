@@ -14,7 +14,7 @@ A GPX trace (different from the default one) is available in this repository at 
 
 ## Demo
 
-### Photos des différentes étapes lors de l'utilisation de Course3d :
+### Photos of the different stages when using Course3d :
 
 When you connect to the site you arrive on the homepage, you can either add your own GPX file or use the GPX file proposed by default by **Course3d** :
 # <img src="./assets/acceuil.PNG" width="320" height="180" alt="acceuil"/>
