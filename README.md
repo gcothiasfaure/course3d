@@ -1,97 +1,85 @@
 # <img src="./assets/logo.png" width="50" height="50" alt="logo"/> Course3d
 
-**Course3d** est un outil de visualisation web d'un parcours dans un environnement 3D à caméra dynamique, basé sur [iTowns](https://github.com/iTowns/itowns).
+**Course3d** is a web-based visualization tool of a course in a 3D dynamic camera environment, based on [iTowns](https://github.com/iTowns/itowns).
 
-Il a été développé dans le cadre du mini projet 3D de TSI-C 2021 à l'ENSG.
+It was developed in the context of the 3D project of TSI-C 2021 at ENSG.
 
+## Quick start
 
-## Déploiement
+To use **Course3d**, import the GPX track of your course at the home page. Then visualize your course in a 3D environment with a dynamic camera. 
 
-**Course3d** est déployé à cette adresse : https://gaspardcothiasfaure.github.io/course3d/
+You can also view the default course proposed by **Course3d**.
 
+A GPX trace (different from the default one) is available in this repository at [./gpx/tdfcml2020.gpx](./gpx/tdfcml2020.gpx).
 
-## Utilisation
-
-Pour utiliser **Course3d**, importez la trace GPX de votre parcours à l'accueil. Puis visualisez votre parcours dans un environnement 3D à caméra dynamique. 
-
-Vous pouvez aussi visualiser le parcours par défaut proposé par **Course3d**.
-
-Une trace GPX (différente de celle par défaut) est disponible dans ce dépôt à [./gpx/tdfcml2020.gpx](./gpx/tdfcml2020.gpx).
-
-## Démonstration
+## Demo
 
 ### Photos des différentes étapes lors de l'utilisation de Course3d :
 
-Lorsque vous vous connectez sur le site vous arrivez sur l'accueil, vous pouvez soit ajouter votre propre fichier GPX soit utiliser le fichier GPX proposé par défaut par **Course3d** :
+When you connect to the site you arrive on the homepage, you can either add your own GPX file or use the GPX file proposed by default by **Course3d** :
 # <img src="./assets/acceuil.PNG" width="320" height="180" alt="acceuil"/>
 
-Une fois votre fichier GPX entré, vous serez déplacé du globe jusqu'au premier point de votre trace GPX symbolisé par un point vert :
+Once your GPX file is entered and after the loading screen, you will be moved from the globe to the first point of your GPX track symbolized by a green sphere.
 
 # <img src="./assets/initialisation.PNG" width="320" height="180" alt="initialisation"/>
 
-Le chemin va alors commencer à suivre la trace GPX et la camera suivra le tracé :
+The path will then start to follow the GPX track and the camera will follow the route.
 
 # <img src="./assets/suivit.PNG" width="320" height="180" alt="suivit"/>
 
-A intervalle régulier, la camera s'aligne avec la tête du tracé, pour avoir une bonne partie du temps le tracé récent à l'écran même dans des zones montagneuses :
+At regular intervals, the camera aligns itself with the head of the track, so that even in mountainous areas the recent track is on the screen most of the time.
 
 # <img src="./assets/montagne_pe.PNG" width="320" height="180" alt="montagne_pe"/>
 
-Enfin lorsque le tracé arrive à la fin de la trace GPX, le dernier point s'affiche en blanc et la camera s'arrête :
+Finally, when the track reaches the end of the GPX trace, the last point is displayed in white and the camera stops.
 
 # <img src="./assets/arrive_pe.png" width="320" height="180" alt="arrive"/>
 
-### Vidéo de démonstration :
+### Video demo :
 
-Lien vers la démonstration vidéo (YouTube) : https://youtu.be/TwzuJKuZqaA
+Link to video demo (YouTube) : https://youtu.be/TwzuJKuZqaA
 
 ## Installation
 
-Le code source (JavaScript) de **Course3d** se trouve dans [./js/main.js](./js/main.js)
+To install **Course3d** : 
 
-Pour installer **Course3d** : 
+- Copy the repo
+- At root : `npm install --legacy-peer-deps`
 
-- Copiez le dépôt
-- A la racine du dépot : `npm install --legacy-peer-deps`
-
-**Course3d** utilise [Webpack](https://github.com/webpack/webpack) comme groupeur de modules JavaScript :
-- Pour lancer un build en mode développement : `npm run build-dev`
-- Pour lancer un build en mode production : `npm run build-prod`
-- Pour lancer un build à chaque  nouvelle sauvegarde du code source : `npm run autobuild`
-
-Dans chaque cas, un *bundle* est généré ([./dist/bundle.js](./dist/bundle.js)), il est lié aux autres fichiers statiques de **Course3d**.
+**Course3d** uses [Webpack](https://github.com/webpack/webpack) :
+- To run a build in development mode : `npm run build-dev`
+- To run a build in production mode : `npm run build-prod`
+- To run a build at each source code save : `npm run autobuild`
 
 > **NOTE :**
 > 
-> Lors du clonage du dépôt, le *bundle* est en version de production
+> When cloning the repository, the *bundle* is in production version
 
+## Implemented features
 
-## Fonctionnalités implémentées
+**Course3d** allows the user to visualize his course (imported via his GPX track in the menu) in a 3D environment with a dynamic camera.
+After importing the track (or starting with the default track), **Course3d** allows the user to view :
 
-**Course3d** permet à l'utilisateur de visualiser son parcours (importé via sa trace GPX dans le menu) dans un environnement 3D à caméra dynamique.
-Après avoir importé son tracé (ou avoir commencé avec le tracé par défaut), **Course3d** permet de visualiser :
+- A camera animation of a view of the globe towards the starting point of the trail
+- Start and finish point markers
+- A dynamic and constant display of the course layout
+- The route from a dynamic camera that follows the progress of the route
 
-- Une animation de caméra d'une vision du globe vers le point de départ du tracé
-- Des marqueurs des points de départ et d'arrivée
-- Le tracé du parcours dévoilé de façon dynamique et constante
-- Le tracé depuis une caméra dynamique qui suit l'avancement du tracé
+## Possible improvements
 
+- Allow the user to:
+  - Pause the plot and camera movement
+  - Choose the duration of the plot and its colour
+  - Enter a plot from another format (KML, JSON, GeoJSON ..)
+- Do not allow the user to stop the dynamic visualisation by touching the 3D map
+- Improve the fluidity of the tracking camera's movement
+- Pre-load the tiles of the plot
+- Display a countdown before the start of the track
+- Allow the user to return to the menu at the end of the track
+- Add a rotation of the camera around the finish point at the end of the track
+- Improve camera positions/orientations to always see the trail optimally (hidden by mountains)
 
-## Améliorations possibles
-
-- Permettre à l'utilisateur :
-  - De mettre en pause le dévoilement du tracé et le mouvement de la caméra
-  - De choisir la durée du tracé et sa couleur
-  - De rentrer un tracé depuis un autre format (KML, JSON, GeoJSON ..)
-- Ne pas permettre à l'utilisateur de stopper la visualisation dynamique en touchant la carte 3D
-- Améliorer la fluidité du déplacement de la caméra suiveuse
-- Pré-charger les tuiles du tracé
-- Afficher un compte à rebours avant le départ du tracé
-- Permettre à l'utilisateur de revenir au menu à la fin du tracé
-- Ajouter une rotation de la caméra autour du point d'arrivée à la fin du tracé
-- Améliorer les positions/orientations de la caméra pour toujours voir de façon optimale le tracé (caché par les montagnes)
-
-## Librairies utilisées
+## Stack
 
 - [iTowns](https://github.com/iTowns/itowns)
 
@@ -102,9 +90,3 @@ Après avoir importé son tracé (ou avoir commencé avec le tracé par défaut)
 - [tween.js](https://github.com/tweenjs/tween.js)
 
 - [bs-custom-file-input](https://github.com/Johann-S/bs-custom-file-input)
-
-
-## Auteurs
-
-- Gaspard Cothias Faure
-- Félix Quinton
